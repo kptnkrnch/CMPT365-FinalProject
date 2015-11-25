@@ -1,0 +1,19 @@
+﻿Build started 2015-11-24 4:17:34 PM.
+     1>Project "c:\Users\Joshua\documents\visual studio 2012\Projects\CMPT365-A3\CMPT365-A3\CMPT365-A3.vcxproj" on node 2 (Build target(s)).
+     1>ClCompile:
+         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /sdl /Od /Oy- /D WIN32 /D _WINDOWS /D _DEBUG /D _UNICODE /D UNICODE /D _AFXDLL /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Yu"stdafx.h" /Fp"Debug\CMPT365-A3.pch" /Fo"Debug\\" /Fd"Debug\vc110.pdb" /Gd /TP /analyze- /errorReport:prompt "CMPT365-A3Dlg.cpp"
+         CMPT365-A3Dlg.cpp
+     1>c:\users\joshua\documents\visual studio 2012\projects\cmpt365-a3\cmpt365-a3\cmpt365-a3dlg.cpp(246): warning C4244: 'initializing' : conversion from 'double' to 'float', possible loss of data
+       ResourceCompile:
+         C:\Program Files (x86)\Windows Kits\8.0\bin\x86\rc.exe /D _DEBUG /D _UNICODE /D UNICODE /D _AFXDLL /l"0x0409" /IDebug\ /nologo /fo"Debug\CMPT365-A3.res" CMPT365-A3.rc 
+       Link:
+         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"c:\users\joshua\documents\visual studio 2012\Projects\CMPT365-A3\Debug\CMPT365-A3.exe" /INCREMENTAL /NOLOGO /LIBPATH:"D:\Notes\SFU\Fall 2015\CMPT 365\A2\OpenCV\opencv\build\x86\vc11\lib" /LIBPATH:"D:\Notes\SFU\Fall 2015\CMPT 365\A2\OpenCV\opencv\build\x86\vc11\staticlib" /LIBPATH:"C:\Users\Joshua\Documents\Visual Studio 2012\Projects\CMPT365-A3\CMPT365-A3\opencv2" opencv_ts300.lib opencv_ts300d.lib opencv_world300.lib opencv_world300d.lib opencv_core300.lib opencv_core300d.lib opencv_imgproc300.lib opencv_imgproc300d.lib opencv_highgui300.lib opencv_highgui300d.lib opencv_ml300.lib opencv_ml300d.lib opencv_video300.lib opencv_video300d.lib opencv_features2d300.lib opencv_features2d300d.lib opencv_calib3d300.lib opencv_calib3d300d.lib opencv_objdetect300.lib opencv_objdetect300d.lib opencv_flann300.lib opencv_flann300d.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /manifestinput:"C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\Include\Manifest\dpiaware.manifest" /DEBUG /PDB:"c:\users\joshua\documents\visual studio 2012\Projects\CMPT365-A3\Debug\CMPT365-A3.pdb" /SUBSYSTEM:WINDOWS /TLBID:1 /ENTRY:"wWinMainCRTStartup" /DYNAMICBASE /NXCOMPAT /IMPLIB:"c:\users\joshua\documents\visual studio 2012\Projects\CMPT365-A3\Debug\CMPT365-A3.lib" /MACHINE:X86 "Debug\CMPT365-A3.res"
+         "Debug\CMPT365-A3.obj"
+         "Debug\CMPT365-A3Dlg.obj"
+         Debug\stdafx.obj
+         CMPT365-A3.vcxproj -> c:\users\joshua\documents\visual studio 2012\Projects\CMPT365-A3\Debug\CMPT365-A3.exe
+     1>Done Building Project "c:\Users\Joshua\documents\visual studio 2012\Projects\CMPT365-A3\CMPT365-A3\CMPT365-A3.vcxproj" (Build target(s)).
+
+Build succeeded.
+
+Time Elapsed 00:00:01.89
