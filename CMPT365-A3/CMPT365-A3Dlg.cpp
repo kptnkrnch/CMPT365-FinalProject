@@ -281,13 +281,13 @@ UINT VideoToSoundThread(LPVOID pParam) {
 				}
 			}
 			namedWindow("MyWindow", CV_WINDOW_AUTOSIZE);
-			for (int i = 0; i < 100000; i++) {
+			//for (int i = 0; i < 100000; i++) {
 				imshow("MyWindow", stiImage);
-				int c = cvWaitKey(10);
+				int c = cvWaitKey(5000);
 				if( (char)c == 27 ) { 
 					running = false;
 				}
-			}
+			//}
 			//Sleep(10000);
 			destroyWindow("MyWindow");
 		}
