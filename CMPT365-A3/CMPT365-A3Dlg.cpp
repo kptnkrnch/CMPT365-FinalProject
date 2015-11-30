@@ -13,6 +13,8 @@
 #include <cstdint>
 #include <string>
 #include <math.h>
+#include <vector>
+#include <stdint.h>
 
 #define PI 3.141592653589793
 
@@ -202,6 +204,12 @@ void CCMPT365A3Dlg::OnBnClickedOpenVideo()
 	delete filebrowser;
 }
 
+typedef struct Pixel {
+	uint8_t red;
+	uint8_t blue;
+	uint8_t green;
+} Pixel;
+
 UINT VideoToSoundThread(LPVOID pParam) {
 	std::string s = "";
 	if (file_path.GetLength() > 0) {
@@ -211,11 +219,13 @@ UINT VideoToSoundThread(LPVOID pParam) {
 	if (s.length() > 0) {
 		VideoCapture vcap(s.c_str());
 		if (vcap.isOpened()) {
-			namedWindow("MyWindow", CV_WINDOW_AUTOSIZE); //create a window with the name "MyWindow"
+			//namedWindow("MyWindow", CV_WINDOW_AUTOSIZE); //create a window with the name "MyWindow"
 			double count = vcap.get(CV_CAP_PROP_FRAME_COUNT);
 
 			int counterer = 0;
-			
+			std::vector<std::vector<Pixel> > STI;
+			int current_frame = 0;
+			Size size;
 			while (running)
 			{
 				//if (img.empty()) {
@@ -227,75 +237,58 @@ UINT VideoToSoundThread(LPVOID pParam) {
 				if (!foundFrame) {
 					break;
 				}
-				Size size = frame.size();
+				size = frame.size();
 				int t = frame.type();
-				Mat output;
-				Size out_size(64, 64);
-				resize(frame, output, out_size);
-				Mat frame_grey(out_size, CV_8UC1);
-				uint8_t soundArray[64][64];
-				for (int x = 0; x < out_size.width; x++) {
-					for (int y = 0; y < out_size.height; y++) {
+
+				std::vector<Pixel> column;
+				//Pixel * column = 0;
+				//column = (Pixel *)malloc(sizeof(Pixel) * size.width);
+				int y = size.height / 2;
+				for (int x = 0; x < size.width; x++) {
+					//for (int y = 0; y < size.height; y++) {
 						Vec3b pixel;
-						pixel = output.at<Vec3b>(y, x);
-					
-						float b = (float) pixel.val[0] / 255;
-						float g = (float) pixel.val[1] / 255;
-						float r = (float) pixel.val[2] / 255;
-					
-						float fgrey = 0.299f * r + 0.587f * g + 0.114 * b;
-						uchar ugrey = (uchar)(255 * fgrey);
-						soundArray[y][x] = (uint8_t)(fgrey * 16);
-						Vec<uchar, 1> intensity;
-						intensity.val[0] = ugrey;
-						frame_grey.at<Vec<uchar, 1> >(y,x) = intensity;
-						//std::cout << x << " " << y << endl;
-					}
+						pixel = frame.at<Vec3b>(y, x);
+
+						Pixel temp;
+					//}
+						temp.blue = pixel.val[0];
+						temp.green = pixel.val[1];
+						temp.red = pixel.val[2];
+						column.push_back(temp);
+						
 				}
-				imshow("MyWindow", frame_grey);
+				STI.push_back(column);
+
+				//imshow("MyWindow", frame);
+				
+				//Sleep(1000);
+			}
+			
+			Size stiImageSize(size.width, STI.size());
+			Mat stiImage(stiImageSize, CV_8UC3);
+			for (int y = 0; y < STI.size(); y++) {
+				std::vector<Pixel> column = STI.at(y);
+				for (int x = 0; x < size.width; x++) {
+					Vec<uchar, 3> pixel;
+					pixel.val[0] = (uchar)column.at(x).blue;
+					pixel.val[1] = (uchar)column.at(x).green;
+					pixel.val[2] = (uchar)column.at(x).red;
+					
+					stiImage.at<Vec<uchar, 3> >(y, x) = pixel;
+					//stiImage.at<Vec<uchar, 1> >(y, x)[0] = 255;
+					//stiImage.at<Vec<uchar, 3> >(y, x)[0] = 0;
+					//stiImage.at<Vec<uchar, 3> >(y, x)[0] = 0;
+				}
+			}
+			namedWindow("MyWindow", CV_WINDOW_AUTOSIZE);
+			for (int i = 0; i < 100000; i++) {
+				imshow("MyWindow", stiImage);
 				int c = cvWaitKey(10);
 				if( (char)c == 27 ) { 
 					running = false;
 				}
-				double Fs = 8000;
-				double freq[64];
-				for (int i = 0; i < 64; i++) {
-					freq[i] = 0;
-				}
-				freq[31] = 440.0;
-				for (int i = 32; i < 64; i++) {
-					freq[i] = freq[i - 1] * pow(2.0, 1.0/12.0);
-				}
-				for (int i = 30; i >= 0; i--) {
-					freq[i] = freq[i + 1] * pow(2.0, -1.0/12.0);
-				}
-
-				double N = 500;
-				double tt_vector[500];
-				for (int i = 0; i < 500; i++) {
-					tt_vector[i] = (i + 1)/Fs;
-				}
-				double volume = 0.75;
-				for (int col = 0; col < 64; col++) {
-					float signal[1000];
-					for (int i = 0; i < 1000; i++) {
-						signal[i] = 0;
-					}
-					for (int row = 0; row < 64; row++) {
-						int m = 64 - row - 1;
-						double ss[500];
-						for (int i = 0; i < 1000; i += 2) {
-							ss[i / 2] = sin(2 * PI * freq[m] * tt_vector[i/2]);
-							signal[i] = signal[i] + (float)(ss[i / 2] * soundArray[row][col] * pow(volume, (double)(16 - soundArray[row][col])));
-							signal[i+1] = signal[i+1] + (float)(ss[i / 2] * soundArray[row][col] * pow(volume, (double)(16 - soundArray[row][col])));
-						}
-					}
-					Sleep(62);
-					if (!running) {
-						break;
-					}
-				}
 			}
+			//Sleep(10000);
 			destroyWindow("MyWindow");
 		}
 	}
