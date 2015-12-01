@@ -31,7 +31,7 @@ UINT STIByHistogramsThread(LPVOID pParam);
 
 HBITMAP hBitmap = NULL;
 CString file_path = NULL;
-bool running = true;
+bool running = false;
 int STI_MODE = 1;
 
 #define STI_MODE_ROWS 1
@@ -191,19 +191,20 @@ HCURSOR CCMPT365A3Dlg::OnQueryDragIcon()
 void CCMPT365A3Dlg::OnBnClickedOk()
 {
 	// TODO: Add your control notification handler code here
-	running = true;
-	switch(STI_MODE) {
-	case STI_MODE_ROWS:
-		AfxBeginThread(STIByCopingCenterRowsThread, NULL);
-		break;
-	case STI_MODE_COLUMNS:
-		AfxBeginThread(STIByCopingCenterColumnsThread, NULL);
-		break;
-	case STI_MODE_HISTOGRAM:
-		AfxBeginThread(STIByHistogramsThread, NULL);
-		break;
+	if (running == false) {
+		running = true;
+		switch(STI_MODE) {
+		case STI_MODE_ROWS:
+			AfxBeginThread(STIByCopingCenterRowsThread, NULL);
+			break;
+		case STI_MODE_COLUMNS:
+			AfxBeginThread(STIByCopingCenterColumnsThread, NULL);
+			break;
+		case STI_MODE_HISTOGRAM:
+			AfxBeginThread(STIByHistogramsThread, NULL);
+			break;
+		}
 	}
-	
 	//CDialogEx::OnOK();
 }
 
@@ -320,6 +321,7 @@ UINT STIByCopingCenterRowsThread(LPVOID pParam) {
 			}
 		}
 	}
+	running = false;
 	return 0;
 }
 
@@ -409,6 +411,7 @@ UINT STIByCopingCenterColumnsThread(LPVOID pParam) {
 			}
 		}
 	}
+	running = false;
 	return 0;
 }
 
@@ -498,6 +501,7 @@ UINT STIByHistogramsThread(LPVOID pParam) {
 			}
 		}
 	}
+	running = false;
 	return 0;
 }
 
