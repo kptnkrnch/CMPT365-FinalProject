@@ -27,6 +27,7 @@ using namespace cv;
 
 UINT STIByCopingCenterRowsThread(LPVOID pParam);
 UINT STIByCopingCenterColumnsThread(LPVOID pParam);
+UINT STIByHistogramsThread(LPVOID pParam);
 
 HBITMAP hBitmap = NULL;
 CString file_path = NULL;
@@ -191,7 +192,18 @@ void CCMPT365A3Dlg::OnBnClickedOk()
 {
 	// TODO: Add your control notification handler code here
 	running = true;
-	AfxBeginThread(STIByCopingCenterRowsThread, NULL);
+	switch(STI_MODE) {
+	case STI_MODE_ROWS:
+		AfxBeginThread(STIByCopingCenterRowsThread, NULL);
+		break;
+	case STI_MODE_COLUMNS:
+		AfxBeginThread(STIByCopingCenterColumnsThread, NULL);
+		break;
+	case STI_MODE_HISTOGRAM:
+		AfxBeginThread(STIByHistogramsThread, NULL);
+		break;
+	}
+	
 	//CDialogEx::OnOK();
 }
 
@@ -312,6 +324,95 @@ UINT STIByCopingCenterRowsThread(LPVOID pParam) {
 }
 
 UINT STIByCopingCenterColumnsThread(LPVOID pParam) {
+	std::string s = "";
+	if (file_path.GetLength() > 0) {
+		CT2CA pszConvertedAnsiString (file_path);
+		 s = std::string(pszConvertedAnsiString);
+	}
+	if (s.length() > 0) {
+		VideoCapture vcap(s.c_str());
+		if (vcap.isOpened()) {
+			//namedWindow("MyWindow", CV_WINDOW_AUTOSIZE); //create a window with the name "MyWindow"
+			double count = vcap.get(CV_CAP_PROP_FRAME_COUNT);
+
+			int counterer = 0;
+			std::vector<std::vector<Pixel> > STI;
+			int current_frame = 0;
+			Size size;
+			while (running)
+			{
+				//if (img.empty()) {
+				//	break;
+				//}
+				Mat frame;
+			
+				bool foundFrame = vcap.read(frame);
+				if (!foundFrame) {
+					break;
+				}
+				size = frame.size();
+				int t = frame.type();
+
+				std::vector<Pixel> column;
+				//Pixel * column = 0;
+				//column = (Pixel *)malloc(sizeof(Pixel) * size.width);
+				int x = size.width / 2;
+				for (int y = 0; y < size.height; y++) {
+					//for (int y = 0; y < size.height; y++) {
+						Vec3b pixel;
+						pixel = frame.at<Vec3b>(y, x);
+
+						Pixel temp;
+					//}
+						temp.blue = pixel.val[0];
+						temp.green = pixel.val[1];
+						temp.red = pixel.val[2];
+						column.push_back(temp);
+						
+				}
+				STI.push_back(column);
+
+				//imshow("MyWindow", frame);
+				
+				//Sleep(1000);
+			}
+			if (running) {
+				Size stiImageSize(STI.size(), size.height);
+				Mat stiImage(stiImageSize, CV_8UC3);
+				for (int y = 0; y < STI.size() && running; y++) {
+					std::vector<Pixel> column = STI.at(y);
+					for (int x = 0; x < size.height && running; x++) {
+						Vec<uchar, 3> pixel;
+						pixel.val[0] = (uchar)column.at(x).blue;
+						pixel.val[1] = (uchar)column.at(x).green;
+						pixel.val[2] = (uchar)column.at(x).red;
+					
+						stiImage.at<Vec<uchar, 3> >(x, y) = pixel;
+						//stiImage.at<Vec<uchar, 1> >(y, x)[0] = 255;
+						//stiImage.at<Vec<uchar, 3> >(y, x)[0] = 0;
+						//stiImage.at<Vec<uchar, 3> >(y, x)[0] = 0;
+					}
+				}
+				if (running) {
+					namedWindow("MyWindow", CV_WINDOW_AUTOSIZE);
+					//for (int i = 0; i < 100000; i++) {
+					imshow("MyWindow", stiImage);
+					int c = cvWaitKey(5000);
+					if( (char)c == 27 ) { 
+						running = false;
+					}
+			
+					//}
+					//Sleep(10000);
+					destroyWindow("MyWindow");
+				}
+			}
+		}
+	}
+	return 0;
+}
+
+UINT STIByHistogramsThread(LPVOID pParam) {
 	std::string s = "";
 	if (file_path.GetLength() > 0) {
 		CT2CA pszConvertedAnsiString (file_path);
