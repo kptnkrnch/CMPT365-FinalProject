@@ -34,4 +34,7 @@ public:
 	afx_msg void OnBnClickedCancel();
 	afx_msg void OnBnClickedOpenVideo();
 	afx_msg void OnBnClickedStopbtn();
+	afx_msg void OnBnClickedRadio1();
+	afx_msg void OnBnClickedRadio2();
+	afx_msg void OnBnClickedRadio3();
 };

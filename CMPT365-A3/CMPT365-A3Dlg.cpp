@@ -25,11 +25,17 @@
 using namespace cv;
 // CAboutDlg dialog used for App About
 
-UINT VideoToSoundThread(LPVOID pParam);
+UINT STIByCopingCenterRowsThread(LPVOID pParam);
+UINT STIByCopingCenterColumnsThread(LPVOID pParam);
 
 HBITMAP hBitmap = NULL;
 CString file_path = NULL;
 bool running = true;
+int STI_MODE = 1;
+
+#define STI_MODE_ROWS 1
+#define STI_MODE_COLUMNS 2
+#define STI_MODE_HISTOGRAM 3
 
 
 // CAboutDlg dialog used for App About
@@ -86,6 +92,9 @@ BEGIN_MESSAGE_MAP(CCMPT365A3Dlg, CDialogEx)
 	ON_BN_CLICKED(IDCANCEL, &CCMPT365A3Dlg::OnBnClickedCancel)
 	ON_BN_CLICKED(IDC_BUTTON1, &CCMPT365A3Dlg::OnBnClickedOpenVideo)
 	ON_BN_CLICKED(IDC_STOPBTN, &CCMPT365A3Dlg::OnBnClickedStopbtn)
+	ON_BN_CLICKED(IDC_RADIO1, &CCMPT365A3Dlg::OnBnClickedRadio1)
+	ON_BN_CLICKED(IDC_RADIO2, &CCMPT365A3Dlg::OnBnClickedRadio2)
+	ON_BN_CLICKED(IDC_RADIO3, &CCMPT365A3Dlg::OnBnClickedRadio3)
 END_MESSAGE_MAP()
 
 
@@ -121,6 +130,8 @@ BOOL CCMPT365A3Dlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// Set small icon
 
 	// TODO: Add extra initialization here
+	CButton* pButton1 = (CButton*)GetDlgItem(IDC_RADIO1);
+	pButton1->SetCheck(true);
 
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
@@ -180,7 +191,7 @@ void CCMPT365A3Dlg::OnBnClickedOk()
 {
 	// TODO: Add your control notification handler code here
 	running = true;
-	AfxBeginThread(VideoToSoundThread, NULL);
+	AfxBeginThread(STIByCopingCenterRowsThread, NULL);
 	//CDialogEx::OnOK();
 }
 
@@ -210,7 +221,7 @@ typedef struct Pixel {
 	uint8_t green;
 } Pixel;
 
-UINT VideoToSoundThread(LPVOID pParam) {
+UINT STIByCopingCenterRowsThread(LPVOID pParam) {
 	std::string s = "";
 	if (file_path.GetLength() > 0) {
 		CT2CA pszConvertedAnsiString (file_path);
@@ -264,32 +275,126 @@ UINT VideoToSoundThread(LPVOID pParam) {
 				//Sleep(1000);
 			}
 			
-			Size stiImageSize(size.width, STI.size());
-			Mat stiImage(stiImageSize, CV_8UC3);
-			for (int y = 0; y < STI.size(); y++) {
-				std::vector<Pixel> column = STI.at(y);
-				for (int x = 0; x < size.width; x++) {
-					Vec<uchar, 3> pixel;
-					pixel.val[0] = (uchar)column.at(x).blue;
-					pixel.val[1] = (uchar)column.at(x).green;
-					pixel.val[2] = (uchar)column.at(x).red;
+			if (running) {
+				Size stiImageSize(STI.size(), size.width);
+				Mat stiImage(stiImageSize, CV_8UC3);
+				for (int y = 0; y < STI.size() && running; y++) {
+					std::vector<Pixel> column = STI.at(y);
+					for (int x = 0; x < size.width && running; x++) {
+						Vec<uchar, 3> pixel;
+						pixel.val[0] = (uchar)column.at(x).blue;
+						pixel.val[1] = (uchar)column.at(x).green;
+						pixel.val[2] = (uchar)column.at(x).red;
 					
-					stiImage.at<Vec<uchar, 3> >(y, x) = pixel;
-					//stiImage.at<Vec<uchar, 1> >(y, x)[0] = 255;
-					//stiImage.at<Vec<uchar, 3> >(y, x)[0] = 0;
-					//stiImage.at<Vec<uchar, 3> >(y, x)[0] = 0;
+						stiImage.at<Vec<uchar, 3> >(x, y) = pixel;
+						//stiImage.at<Vec<uchar, 1> >(y, x)[0] = 255;
+						//stiImage.at<Vec<uchar, 3> >(y, x)[0] = 0;
+						//stiImage.at<Vec<uchar, 3> >(y, x)[0] = 0;
+					}
+				}
+				if (running) {
+					namedWindow("MyWindow", CV_WINDOW_AUTOSIZE);
+					//for (int i = 0; i < 100000; i++) {
+					imshow("MyWindow", stiImage);
+					int c = cvWaitKey(5000);
+					if( (char)c == 27 ) { 
+						running = false;
+					}
+			
+					//}
+					//Sleep(10000);
+					destroyWindow("MyWindow");
 				}
 			}
-			namedWindow("MyWindow", CV_WINDOW_AUTOSIZE);
-			//for (int i = 0; i < 100000; i++) {
-				imshow("MyWindow", stiImage);
-				int c = cvWaitKey(5000);
-				if( (char)c == 27 ) { 
-					running = false;
+		}
+	}
+	return 0;
+}
+
+UINT STIByCopingCenterColumnsThread(LPVOID pParam) {
+	std::string s = "";
+	if (file_path.GetLength() > 0) {
+		CT2CA pszConvertedAnsiString (file_path);
+		 s = std::string(pszConvertedAnsiString);
+	}
+	if (s.length() > 0) {
+		VideoCapture vcap(s.c_str());
+		if (vcap.isOpened()) {
+			//namedWindow("MyWindow", CV_WINDOW_AUTOSIZE); //create a window with the name "MyWindow"
+			double count = vcap.get(CV_CAP_PROP_FRAME_COUNT);
+
+			int counterer = 0;
+			std::vector<std::vector<Pixel> > STI;
+			int current_frame = 0;
+			Size size;
+			while (running)
+			{
+				//if (img.empty()) {
+				//	break;
+				//}
+				Mat frame;
+			
+				bool foundFrame = vcap.read(frame);
+				if (!foundFrame) {
+					break;
 				}
-			//}
-			//Sleep(10000);
-			destroyWindow("MyWindow");
+				size = frame.size();
+				int t = frame.type();
+
+				std::vector<Pixel> column;
+				//Pixel * column = 0;
+				//column = (Pixel *)malloc(sizeof(Pixel) * size.width);
+				int x = size.width / 2;
+				for (int y = 0; y < size.height; y++) {
+					//for (int y = 0; y < size.height; y++) {
+						Vec3b pixel;
+						pixel = frame.at<Vec3b>(y, x);
+
+						Pixel temp;
+					//}
+						temp.blue = pixel.val[0];
+						temp.green = pixel.val[1];
+						temp.red = pixel.val[2];
+						column.push_back(temp);
+						
+				}
+				STI.push_back(column);
+
+				//imshow("MyWindow", frame);
+				
+				//Sleep(1000);
+			}
+			if (running) {
+				Size stiImageSize(STI.size(), size.height);
+				Mat stiImage(stiImageSize, CV_8UC3);
+				for (int y = 0; y < STI.size() && running; y++) {
+					std::vector<Pixel> column = STI.at(y);
+					for (int x = 0; x < size.height && running; x++) {
+						Vec<uchar, 3> pixel;
+						pixel.val[0] = (uchar)column.at(x).blue;
+						pixel.val[1] = (uchar)column.at(x).green;
+						pixel.val[2] = (uchar)column.at(x).red;
+					
+						stiImage.at<Vec<uchar, 3> >(x, y) = pixel;
+						//stiImage.at<Vec<uchar, 1> >(y, x)[0] = 255;
+						//stiImage.at<Vec<uchar, 3> >(y, x)[0] = 0;
+						//stiImage.at<Vec<uchar, 3> >(y, x)[0] = 0;
+					}
+				}
+				if (running) {
+					namedWindow("MyWindow", CV_WINDOW_AUTOSIZE);
+					//for (int i = 0; i < 100000; i++) {
+					imshow("MyWindow", stiImage);
+					int c = cvWaitKey(5000);
+					if( (char)c == 27 ) { 
+						running = false;
+					}
+			
+					//}
+					//Sleep(10000);
+					destroyWindow("MyWindow");
+				}
+			}
 		}
 	}
 	return 0;
@@ -299,4 +404,37 @@ void CCMPT365A3Dlg::OnBnClickedStopbtn()
 {
 	// TODO: Add your control notification handler code here
 	running = false;
+}
+
+//Radio button handler for Center Rows STI
+void CCMPT365A3Dlg::OnBnClickedRadio1()
+{
+	// TODO: Add your control notification handler code here
+	CButton* pButton2 = (CButton*)GetDlgItem(IDC_RADIO2);
+	pButton2->SetCheck(false);
+	CButton* pButton3 = (CButton*)GetDlgItem(IDC_RADIO3);
+	pButton3->SetCheck(false);
+	STI_MODE = STI_MODE_ROWS;
+}
+
+//Radio button handler for Center Columns STI
+void CCMPT365A3Dlg::OnBnClickedRadio2()
+{
+	// TODO: Add your control notification handler code here
+	CButton* pButton1 = (CButton*)GetDlgItem(IDC_RADIO1);
+	pButton1->SetCheck(false);
+	CButton* pButton3 = (CButton*)GetDlgItem(IDC_RADIO3);
+	pButton3->SetCheck(false);
+	STI_MODE = STI_MODE_COLUMNS;
+}
+
+//Radio button handler for Histogram STI
+void CCMPT365A3Dlg::OnBnClickedRadio3()
+{
+	// TODO: Add your control notification handler code here
+	CButton* pButton1 = (CButton*)GetDlgItem(IDC_RADIO1);
+	pButton1->SetCheck(false);
+	CButton* pButton2 = (CButton*)GetDlgItem(IDC_RADIO2);
+	pButton2->SetCheck(false);
+	STI_MODE = STI_MODE_HISTOGRAM;
 }
