@@ -15,6 +15,7 @@
 #include <math.h>
 #include <vector>
 #include <stdint.h>
+#include <sstream>
 
 #define PI 3.141592653589793
 
@@ -30,6 +31,7 @@ UINT STIByCopingCenterColumnsThread(LPVOID pParam);
 UINT STIByHistogramsThread(LPVOID pParam);
 
 Mat DetectEdge(Mat img);
+Point FindTransition(Mat img);
 
 HBITMAP hBitmap = NULL;
 CString file_path = NULL;
@@ -310,18 +312,27 @@ UINT STIByCopingCenterRowsThread(LPVOID pParam) {
 				if (running) {
 					namedWindow("MyWindow", CV_WINDOW_AUTOSIZE);
 					//for (int i = 0; i < 100000; i++) {
-					imshow("MyWindow", stiImage);
+					//imshow("MyWindow", stiImage);
+					//int c = cvWaitKey(5000);
+					//if( (char)c == 27 ) { 
+					//	running = false;
+					//}
+					std::vector<int> params;
+					params.push_back(CV_IMWRITE_PNG_COMPRESSION);
+					params.push_back(3);
+					Mat edges = DetectEdge(stiImage);
+					imwrite("image.png", edges, params);
+					imshow("MyWindow", edges);
 					int c = cvWaitKey(5000);
 					if( (char)c == 27 ) { 
 						running = false;
 					}
-
-					Mat edges = DetectEdge(stiImage);
-					imshow("MyWindow", edges);
-					c = cvWaitKey(5000);
-					if( (char)c == 27 ) { 
-						running = false;
-					}
+					Point p = FindTransition(edges);
+					int z = 0;
+					//CWnd * editbox = (CWnd *)GetDlgItem(IDC_EDIT1);
+					//editbox->SetWindowTextW(str2);
+					//LPCTSTR str = CA2W(oss.str().c_str());
+					//AfxMessageBox(str);
 					//}
 					//Sleep(10000);
 					destroyWindow("MyWindow");
@@ -432,6 +443,95 @@ Mat DetectEdge(Mat img) {
 	double threshold = 0.1;
 	Canny( detectedEdges, detectedEdges, threshold, threshold*3,3);
 	return detectedEdges;
+}
+
+Point FindTransition(Mat img) {
+	std::vector<Point> longestPath;
+	for (int y = 0; y < img.size().height - 1; y++) {
+		for (int x = 0; x < img.size().width - 1; x++) {
+			Vec<uchar, 1> pixel;
+			pixel = img.at<Vec<uchar, 1> >(y, x);
+
+			int intensity = pixel.val[0];
+			if (intensity > 230) {
+				std::vector<Point> tempLongestPath;
+				Point p(x, y);
+				tempLongestPath.push_back(p);
+				int xDist = 0;
+				int yDist = 0;
+				while (true) {
+					bool found = false;
+
+					if (!found && y < img.size().height - 1) {
+						pixel = img.at<Vec<uchar, 1> >(y + 1, x);
+						intensity = pixel.val[0];
+						if (intensity > 230) {
+							found = true;
+							y += 1;
+							yDist++;
+						}
+					}
+
+					if (!found && y < img.size().height - 1 && x < img.size().width - 1) {
+						pixel = img.at<Vec<uchar, 1> >(y + 1, x + 1);
+						intensity = pixel.val[0];
+						if (intensity > 230) {
+							found = true;
+							y += 1;
+							x += 1;
+							yDist++;
+							xDist++;
+						} 
+					}
+					if (!found && x < img.size().width - 1) {
+						pixel = img.at<Vec<uchar, 1> >(y, x + 1);
+						intensity = pixel.val[0];
+						if (intensity > 230) {
+							found = true;
+							x += 1;
+							xDist++;
+						}
+					}
+
+					if (!found) {
+						if (tempLongestPath.size() > longestPath.size()) {
+							longestPath = tempLongestPath;
+						}
+						break;
+					}
+
+					if (xDist > 5 || yDist > 5 && xDist > 0) {
+						double angle = atan((double)yDist / (double)xDist);
+						if (angle < 0.5) {
+							if (tempLongestPath.size() > longestPath.size()) {
+								longestPath = tempLongestPath;
+							}
+							break;
+						}
+					}
+					Point tempP(x, y);
+					tempLongestPath.push_back(tempP);
+				}
+			}
+		}
+						
+	}
+	if (longestPath.size() > 0) {
+		int startX = longestPath.at(0).x;
+		int startY = longestPath.at(0).y;
+		int endX = longestPath.at(longestPath.size() - 1).x;
+		int endY = longestPath.at(longestPath.size() - 1).y;
+		int x = endX - startX;
+		int y = endY - startY;
+		double angle = atan((double)x/(double)y);
+		int newX = startX - (int)(tan(angle) * startY);
+		Point transition(newX, 0);
+		return transition;
+		//return longestPath.at(0);
+	} else {
+		Point error(-1, -1);
+		return error;
+	}
 }
 
 typedef struct ChromaPixel {
