@@ -321,7 +321,7 @@ UINT STIByCopingCenterRowsThread(LPVOID pParam) {
 					params.push_back(CV_IMWRITE_PNG_COMPRESSION);
 					params.push_back(3);
 					Mat edges = DetectEdge(stiImage);
-					imwrite("image.png", edges, params);
+					//imwrite("image2.png", edges, params);
 					imshow("MyWindow", edges);
 					int c = cvWaitKey(5000);
 					if( (char)c == 27 ) { 
@@ -545,7 +545,7 @@ public:
 	int height;
 	long bins;
 	ChromaPixel ** image;
-	int ** histogram;
+	int ** histogram;//in format [r][g]
 
 	ChromaticityFrame(const int _width, const int _height) {
 		this->width = _width;
@@ -627,6 +627,14 @@ UINT STIByHistogramsThread(LPVOID pParam) {
 				}
 				long bins = 1 + (long)(log10(size.width) / log10(2));
 				cimage.bins = bins;
+				for (int y = 0; y < size.height; y++) {
+					for (int x = 0; x < size.width; x++) {
+						ChromaPixel temp = cimage.GetPixel(x, y);
+						int r = (int)floor((float)((bins - 1) * temp.r));
+						int g = (int)floor((float)((bins - 1) * temp.g));
+						cimage.histogram[r][g] += 1;
+					}
+				}
 				STI.push_back(cimage);
 			}
 			if (running) { //Commented out blocks of code are due to histogram being WIP
