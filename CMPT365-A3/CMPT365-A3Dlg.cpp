@@ -29,6 +29,8 @@ UINT STIByCopingCenterRowsThread(LPVOID pParam);
 UINT STIByCopingCenterColumnsThread(LPVOID pParam);
 UINT STIByHistogramsThread(LPVOID pParam);
 
+Mat DetectEdge(Mat img);
+
 HBITMAP hBitmap = NULL;
 CString file_path = NULL;
 bool running = false;
@@ -313,7 +315,13 @@ UINT STIByCopingCenterRowsThread(LPVOID pParam) {
 					if( (char)c == 27 ) { 
 						running = false;
 					}
-			
+
+					Mat edges = DetectEdge(stiImage);
+					imshow("MyWindow", edges);
+					c = cvWaitKey(5000);
+					if( (char)c == 27 ) { 
+						running = false;
+					}
 					//}
 					//Sleep(10000);
 					destroyWindow("MyWindow");
@@ -413,6 +421,17 @@ UINT STIByCopingCenterColumnsThread(LPVOID pParam) {
 	}
 	running = false;
 	return 0;
+}
+
+Mat DetectEdge(Mat img) {
+	Mat grey, dest;
+	dest.create(img.size(), img.type());
+	cvtColor(img, grey, CV_BGR2GRAY);
+	Mat detectedEdges;
+	blur(grey, detectedEdges, Size(3,3));
+	double threshold = 0.1;
+	Canny( detectedEdges, detectedEdges, threshold, threshold*3,3);
+	return detectedEdges;
 }
 
 typedef struct ChromaPixel {
