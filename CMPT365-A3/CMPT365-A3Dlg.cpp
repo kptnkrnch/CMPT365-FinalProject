@@ -415,6 +415,50 @@ UINT STIByCopingCenterColumnsThread(LPVOID pParam) {
 	return 0;
 }
 
+typedef struct ChromaPixel {
+	float r;
+	float g;
+} ChromaPixel;
+
+class ChromaticityFrame {
+public:
+	int width;
+	int height;
+	long bins;
+	ChromaPixel ** image;
+	int ** histogram;
+
+	ChromaticityFrame(const int _width, const int _height) {
+		this->width = _width;
+		this->height = _height;
+		this->bins = 0;
+		image = (ChromaPixel **)malloc(sizeof(ChromaPixel *) * _height);
+		for (int i = 0; i < _height; i++) {
+			image[i] = (ChromaPixel *)malloc(sizeof(ChromaPixel) * _width);
+		}
+		histogram = 0;
+	}
+
+	void CreateHistogram(long numberOfBins) {
+		this->bins = numberOfBins;
+		histogram = (int **)malloc(sizeof(int *) * numberOfBins);
+		for (int i = 0; i < numberOfBins; i++) {
+			histogram[i] = (int *)malloc(sizeof(int) * numberOfBins);
+			for (int n = 0; n < numberOfBins; n++) {
+				histogram[i][n] = 0;
+			}
+		}
+	}
+
+	void SetPixel(int x, int y, ChromaPixel value) {
+		image[y][x] = value;
+	}
+
+	ChromaPixel GetPixel(int x, int y) {
+		return image[y][x];
+	}
+};
+
 UINT STIByHistogramsThread(LPVOID pParam) {
 	std::string s = "";
 	if (file_path.GetLength() > 0) {
@@ -428,7 +472,7 @@ UINT STIByHistogramsThread(LPVOID pParam) {
 			double count = vcap.get(CV_CAP_PROP_FRAME_COUNT);
 
 			int counterer = 0;
-			std::vector<std::vector<Pixel> > STI;
+			std::vector<ChromaticityFrame> STI;
 			int current_frame = 0;
 			Size size;
 			while (running)
@@ -445,34 +489,32 @@ UINT STIByHistogramsThread(LPVOID pParam) {
 				size = frame.size();
 				int t = frame.type();
 
-				std::vector<Pixel> column;
-				//Pixel * column = 0;
-				//column = (Pixel *)malloc(sizeof(Pixel) * size.width);
-				int x = size.width / 2;
+				//calculating chromaticity frames and storing them in a vector for easy access
+				ChromaticityFrame cimage(size.width, size.height);
 				for (int y = 0; y < size.height; y++) {
-					//for (int y = 0; y < size.height; y++) {
+					for (int x = 0; x < size.width; x++) {
 						Vec3b pixel;
 						pixel = frame.at<Vec3b>(y, x);
 
-						Pixel temp;
-					//}
-						temp.blue = pixel.val[0];
-						temp.green = pixel.val[1];
-						temp.red = pixel.val[2];
-						column.push_back(temp);
+						ChromaPixel temp;
+						int red = pixel.val[0];
+						int green = pixel.val[1];
+						int blue = pixel.val[2];
+						temp.r = (float)red/(red + green + blue);
+						temp.g = (float)green/(red + green + blue);
+						cimage.SetPixel(x, y, temp);
+					}
 						
 				}
-				STI.push_back(column);
-
-				//imshow("MyWindow", frame);
-				
-				//Sleep(1000);
+				long bins = 1 + (long)(log10(size.width) / log10(2));
+				cimage.bins = bins;
+				STI.push_back(cimage);
 			}
-			if (running) {
+			if (running) { //Commented out blocks of code are due to histogram being WIP
 				Size stiImageSize(STI.size(), size.height);
 				Mat stiImage(stiImageSize, CV_8UC3);
 				for (int y = 0; y < STI.size() && running; y++) {
-					std::vector<Pixel> column = STI.at(y);
+					/*std::vector<Pixel> column = STI.at(y);
 					for (int x = 0; x < size.height && running; x++) {
 						Vec<uchar, 3> pixel;
 						pixel.val[0] = (uchar)column.at(x).blue;
@@ -480,13 +522,10 @@ UINT STIByHistogramsThread(LPVOID pParam) {
 						pixel.val[2] = (uchar)column.at(x).red;
 					
 						stiImage.at<Vec<uchar, 3> >(x, y) = pixel;
-						//stiImage.at<Vec<uchar, 1> >(y, x)[0] = 255;
-						//stiImage.at<Vec<uchar, 3> >(y, x)[0] = 0;
-						//stiImage.at<Vec<uchar, 3> >(y, x)[0] = 0;
-					}
+					}*/
 				}
-				if (running) {
-					namedWindow("MyWindow", CV_WINDOW_AUTOSIZE);
+				if (running) {//Commented out blocks of code are due to histogram being WIP
+					/*namedWindow("MyWindow", CV_WINDOW_AUTOSIZE);
 					//for (int i = 0; i < 100000; i++) {
 					imshow("MyWindow", stiImage);
 					int c = cvWaitKey(5000);
@@ -496,7 +535,7 @@ UINT STIByHistogramsThread(LPVOID pParam) {
 			
 					//}
 					//Sleep(10000);
-					destroyWindow("MyWindow");
+					destroyWindow("MyWindow");*/
 				}
 			}
 		}
