@@ -247,7 +247,6 @@ UINT STIByCopingCenterRowsThread(LPVOID pParam) {
 	if (s.length() > 0) {
 		VideoCapture vcap(s.c_str());
 		if (vcap.isOpened()) {
-			//namedWindow("MyWindow", CV_WINDOW_AUTOSIZE); //create a window with the name "MyWindow"
 			double count = vcap.get(CV_CAP_PROP_FRAME_COUNT);
 
 			int counterer = 0;
@@ -256,9 +255,6 @@ UINT STIByCopingCenterRowsThread(LPVOID pParam) {
 			Size size;
 			while (running)
 			{
-				//if (img.empty()) {
-				//	break;
-				//}
 				Mat frame;
 			
 				bool foundFrame = vcap.read(frame);
@@ -269,27 +265,22 @@ UINT STIByCopingCenterRowsThread(LPVOID pParam) {
 				int t = frame.type();
 
 				std::vector<Pixel> column;
-				//Pixel * column = 0;
-				//column = (Pixel *)malloc(sizeof(Pixel) * size.width);
+
 				int y = size.height / 2;
 				for (int x = 0; x < size.width; x++) {
-					//for (int y = 0; y < size.height; y++) {
-						Vec3b pixel;
-						pixel = frame.at<Vec3b>(y, x);
+					
+					Vec3b pixel;
+					pixel = frame.at<Vec3b>(y, x);
 
-						Pixel temp;
-					//}
-						temp.blue = pixel.val[0];
-						temp.green = pixel.val[1];
-						temp.red = pixel.val[2];
-						column.push_back(temp);
+					Pixel temp;
+					
+					temp.blue = pixel.val[0];
+					temp.green = pixel.val[1];
+					temp.red = pixel.val[2];
+					column.push_back(temp);
 						
 				}
 				STI.push_back(column);
-
-				//imshow("MyWindow", frame);
-				
-				//Sleep(1000);
 			}
 			
 			if (running) {
@@ -304,37 +295,32 @@ UINT STIByCopingCenterRowsThread(LPVOID pParam) {
 						pixel.val[2] = (uchar)column.at(x).red;
 					
 						stiImage.at<Vec<uchar, 3> >(x, y) = pixel;
-						//stiImage.at<Vec<uchar, 1> >(y, x)[0] = 255;
-						//stiImage.at<Vec<uchar, 3> >(y, x)[0] = 0;
-						//stiImage.at<Vec<uchar, 3> >(y, x)[0] = 0;
 					}
 				}
 				if (running) {
 					namedWindow("MyWindow", CV_WINDOW_AUTOSIZE);
-					//for (int i = 0; i < 100000; i++) {
-					//imshow("MyWindow", stiImage);
-					//int c = cvWaitKey(5000);
-					//if( (char)c == 27 ) { 
-					//	running = false;
-					//}
-					std::vector<int> params;
-					params.push_back(CV_IMWRITE_PNG_COMPRESSION);
-					params.push_back(3);
-					Mat edges = DetectEdge(stiImage);
-					//imwrite("image2.png", edges, params);
-					imshow("MyWindow", edges);
+					
+					imshow("MyWindow", stiImage);
 					int c = cvWaitKey(5000);
 					if( (char)c == 27 ) { 
 						running = false;
 					}
+					std::vector<int> params;
+					params.push_back(CV_IMWRITE_PNG_COMPRESSION);
+					params.push_back(3);
+					Mat edges = DetectEdge(stiImage);
+					
+					imshow("MyWindow", edges);
+					c = cvWaitKey(5000);
+					if( (char)c == 27 ) { 
+						running = false;
+					}
 					Point p = FindTransition(edges);
-					int z = 0;
-					//CWnd * editbox = (CWnd *)GetDlgItem(IDC_EDIT1);
-					//editbox->SetWindowTextW(str2);
-					//LPCTSTR str = CA2W(oss.str().c_str());
-					//AfxMessageBox(str);
-					//}
-					//Sleep(10000);
+					
+					CString msg;
+					msg.Format(L"The transition begins at approximately frame #: %d", p.x);
+					AfxMessageBox(msg);
+
 					destroyWindow("MyWindow");
 				}
 			}
