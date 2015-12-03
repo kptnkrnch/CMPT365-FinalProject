@@ -526,12 +526,16 @@ typedef struct ChromaPixel {
 } ChromaPixel;
 
 class ChromaticityFrame {
+private:
+	bool imageAllocated;
 public:
 	int width;
 	int height;
 	long bins;
 	ChromaPixel ** image;
 	int ** histogram;//in format [r][g]
+	//std::vector<float **> colhistogram;
+	std::vector<std::vector<std::vector<float> > * > colhistogram;
 
 	ChromaticityFrame(const int _width, const int _height) {
 		this->width = _width;
@@ -542,6 +546,17 @@ public:
 			image[i] = (ChromaPixel *)malloc(sizeof(ChromaPixel) * _width);
 		}
 		histogram = 0;
+		imageAllocated = true;
+	}
+
+	void DeleteImage() {
+		if (imageAllocated) {
+			for (int i = 0; i < height; i++) {
+				free(image[i]);
+			}
+			free(image);
+			imageAllocated = false;
+		}
 	}
 
 	void CreateHistogram(long numberOfBins) {
@@ -556,7 +571,8 @@ public:
 	}
 
 	void SetPixel(int x, int y, ChromaPixel value) {
-		image[y][x] = value;
+		image[y][x].r = value.r;
+		image[y][x].g = value.g;
 	}
 
 	ChromaPixel GetPixel(int x, int y) {
@@ -573,18 +589,15 @@ UINT STIByHistogramsThread(LPVOID pParam) {
 	if (s.length() > 0) {
 		VideoCapture vcap(s.c_str());
 		if (vcap.isOpened()) {
-			//namedWindow("MyWindow", CV_WINDOW_AUTOSIZE); //create a window with the name "MyWindow"
 			double count = vcap.get(CV_CAP_PROP_FRAME_COUNT);
 
 			int counterer = 0;
 			std::vector<ChromaticityFrame> STI;
+			std::vector<float **> columnHistograms;
 			int current_frame = 0;
 			Size size;
 			while (running)
 			{
-				//if (img.empty()) {
-				//	break;
-				//}
 				Mat frame;
 			
 				bool foundFrame = vcap.read(frame);
@@ -605,51 +618,101 @@ UINT STIByHistogramsThread(LPVOID pParam) {
 						int red = pixel.val[0];
 						int green = pixel.val[1];
 						int blue = pixel.val[2];
-						temp.r = (float)red/(red + green + blue);
-						temp.g = (float)green/(red + green + blue);
+						if ((red + green + blue) > 0) {
+							temp.r = (float)red/(red + green + blue);
+							temp.g = (float)green/(red + green + blue);
+						} else {
+							temp.r = 0;
+							temp.g = 0;
+						}
 						cimage.SetPixel(x, y, temp);
 					}
 						
 				}
-				long bins = 1 + (long)(log10(size.width) / log10(2));
+				long bins = 1 + (long)(log10(size.height) / log10(2));
 				cimage.bins = bins;
-				for (int y = 0; y < size.height; y++) {
-					for (int x = 0; x < size.width; x++) {
-						ChromaPixel temp = cimage.GetPixel(x, y);
-						int r = (int)floor((float)((bins - 1) * temp.r));
-						int g = (int)floor((float)((bins - 1) * temp.g));
-						cimage.histogram[r][g] += 1;
-					}
-				}
 				STI.push_back(cimage);
 			}
-			if (running) { //Commented out blocks of code are due to histogram being WIP
-				Size stiImageSize(STI.size(), size.height);
-				Mat stiImage(stiImageSize, CV_8UC3);
-				for (int y = 0; y < STI.size() && running; y++) {
-					/*std::vector<Pixel> column = STI.at(y);
-					for (int x = 0; x < size.height && running; x++) {
-						Vec<uchar, 3> pixel;
-						pixel.val[0] = (uchar)column.at(x).blue;
-						pixel.val[1] = (uchar)column.at(x).green;
-						pixel.val[2] = (uchar)column.at(x).red;
-					
-						stiImage.at<Vec<uchar, 3> >(x, y) = pixel;
-					}*/
+			if (running) {
+				Size stiImageSize(STI.size(), size.width);
+				Mat stiImage(stiImageSize, CV_8UC1);
+				
+				
+				for (int frame = 0; frame < STI.size(); frame++) {
+					if (frame == 0) {
+						for (int row = 0; row < size.width; row++) {
+							Vec<uchar, 1> pixel;
+							pixel.val[0] = 0;
+							stiImage.at<Vec<uchar, 1> >(row, 0) = pixel;
+						}
+					} else {
+						ChromaticityFrame cimage1 = STI.at(frame);
+						ChromaticityFrame cimage2 = STI.at(frame - 1);
+
+						const int bins = cimage1.bins;
+						for (int column = 0; column < cimage1.width; column++) {
+							float ** histogram1 = new float*[bins];
+							float ** histogram2 = new float*[bins];
+							for (int temp = 0; temp < bins; temp++) {
+								histogram1[temp] = new float[bins];
+								histogram2[temp] = new float[bins];
+								for (int x = 0; x < bins; x++) {
+									histogram1[temp][x] = 0;
+									histogram2[temp][x] = 0;
+								}
+							}
+							float sum = cimage1.height;
+							for (int row = 0; row < cimage1.height; row++) {
+								int r1 = (int)floor((bins - 1) * cimage1.GetPixel(column, row).r);
+								int g1 = (int)floor((bins - 1) * cimage1.GetPixel(column, row).g);
+								histogram1[r1][g1] += 1.0;
+								int r2 = (int)floor((bins - 1) * cimage2.GetPixel(column, row).r);
+								int g2 = (int)floor((bins - 1) * cimage2.GetPixel(column, row).g);
+								histogram2[r2][g2] += 1.0;
+							}
+							float I = 0;
+							for (int r = 0; r < bins; r++) {
+								for (int g = 0; g < bins; g++) {
+									histogram1[r][g] = histogram1[r][g] / sum;
+									histogram2[r][g] = histogram2[r][g] / sum;
+
+									if (histogram1[r][g] < histogram2[r][g]) {
+										I += histogram1[r][g];
+									} else {
+										I += histogram2[r][g];
+									}
+								}
+							}
+							Vec<uchar, 1> pixel;
+							if (I > 0.7) {
+								pixel.val[0] = 255;
+							} else {
+								pixel.val[0] = 0;
+							}
+							stiImage.at<Vec<uchar, 1> >(column, frame) = pixel;
+
+							for (int y = 0; y < bins; y++) {
+								delete[] histogram1[y];
+								delete[] histogram2[y];
+							}
+							delete[] histogram1;
+							delete[] histogram2;
+						}
+					}
 				}
-				if (running) {//Commented out blocks of code are due to histogram being WIP
-					/*namedWindow("MyWindow", CV_WINDOW_AUTOSIZE);
-					//for (int i = 0; i < 100000; i++) {
+				if (running) {
+					namedWindow("MyWindow", CV_WINDOW_AUTOSIZE);
 					imshow("MyWindow", stiImage);
 					int c = cvWaitKey(5000);
 					if( (char)c == 27 ) { 
 						running = false;
 					}
-			
-					//}
-					//Sleep(10000);
-					destroyWindow("MyWindow");*/
+					destroyWindow("MyWindow");
 				}
+			}
+			for (int i = 0; i < STI.size(); i++) {
+				ChromaticityFrame frame = STI.at(i);
+				frame.DeleteImage();
 			}
 		}
 	}
