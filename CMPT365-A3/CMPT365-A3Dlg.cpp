@@ -37,6 +37,7 @@ HBITMAP hBitmap = NULL;
 CString file_path = NULL;
 bool running = false;
 int STI_MODE = 1;
+bool find_transition_frame = false;
 
 #define STI_MODE_ROWS 1
 #define STI_MODE_COLUMNS 2
@@ -100,6 +101,7 @@ BEGIN_MESSAGE_MAP(CCMPT365A3Dlg, CDialogEx)
 	ON_BN_CLICKED(IDC_RADIO1, &CCMPT365A3Dlg::OnBnClickedRadio1)
 	ON_BN_CLICKED(IDC_RADIO2, &CCMPT365A3Dlg::OnBnClickedRadio2)
 	ON_BN_CLICKED(IDC_RADIO3, &CCMPT365A3Dlg::OnBnClickedRadio3)
+	ON_BN_CLICKED(IDC_CHECK1, &CCMPT365A3Dlg::OnBnClickedCheck1)
 END_MESSAGE_MAP()
 
 
@@ -305,21 +307,24 @@ UINT STIByCopingCenterRowsThread(LPVOID pParam) {
 					if( (char)c == 27 ) { 
 						running = false;
 					}
-					std::vector<int> params;
-					params.push_back(CV_IMWRITE_PNG_COMPRESSION);
-					params.push_back(3);
-					Mat edges = DetectEdge(stiImage);
+					//std::vector<int> params;
+					//params.push_back(CV_IMWRITE_PNG_COMPRESSION);
+					//params.push_back(3);
+					//Mat edges = DetectEdge(stiImage);
 					
-					imshow("MyWindow", edges);
-					c = cvWaitKey(5000);
-					if( (char)c == 27 ) { 
-						running = false;
+					//imshow("MyWindow", edges);
+					//c = cvWaitKey(5000);
+					//if( (char)c == 27 ) { 
+					//	running = false;
+					//}
+					if (find_transition_frame) {
+						Mat edges = DetectEdge(stiImage);
+						Point p = FindTransition(edges);
+					
+						CString msg;
+						msg.Format(L"The transition begins at frame #: %d", (p.x + 1));
+						AfxMessageBox(msg);
 					}
-					Point p = FindTransition(edges);
-					
-					CString msg;
-					msg.Format(L"The transition begins at approximately frame #: %d", p.x);
-					AfxMessageBox(msg);
 
 					destroyWindow("MyWindow");
 				}
@@ -407,6 +412,15 @@ UINT STIByCopingCenterColumnsThread(LPVOID pParam) {
 					int c = cvWaitKey(5000);
 					if( (char)c == 27 ) { 
 						running = false;
+					}
+
+					if (find_transition_frame) {
+						Mat edges = DetectEdge(stiImage);
+						Point p = FindTransition(edges);
+					
+						CString msg;
+						msg.Format(L"The transition begins at frame #: %d", (p.x + 1));
+						AfxMessageBox(msg);
 					}
 			
 					//}
@@ -685,9 +699,9 @@ UINT STIByHistogramsThread(LPVOID pParam) {
 							}
 							Vec<uchar, 1> pixel;
 							if (I > 0.7) {
-								pixel.val[0] = 255;
-							} else {
 								pixel.val[0] = 0;
+							} else {
+								pixel.val[0] = 255;
 							}
 							stiImage.at<Vec<uchar, 1> >(column, frame) = pixel;
 
@@ -708,6 +722,13 @@ UINT STIByHistogramsThread(LPVOID pParam) {
 						running = false;
 					}
 					destroyWindow("MyWindow");
+					if (find_transition_frame) {
+						Point p = FindTransition(stiImage);
+					
+						CString msg;
+						msg.Format(L"The transition begins at frame #: %d", (p.x + 1));
+						AfxMessageBox(msg);
+					}
 				}
 			}
 			for (int i = 0; i < STI.size(); i++) {
@@ -757,4 +778,19 @@ void CCMPT365A3Dlg::OnBnClickedRadio3()
 	CButton* pButton2 = (CButton*)GetDlgItem(IDC_RADIO2);
 	pButton2->SetCheck(false);
 	STI_MODE = STI_MODE_HISTOGRAM;
+}
+
+
+void CCMPT365A3Dlg::OnBnClickedCheck1()
+{
+	// TODO: Add your control notification handler code here
+	if (find_transition_frame) {
+		CButton* checkBtn = (CButton*)GetDlgItem(IDC_CHECK1);
+		checkBtn->SetCheck(false);
+		find_transition_frame = false;
+	} else {
+		CButton* checkBtn = (CButton*)GetDlgItem(IDC_CHECK1);
+		checkBtn->SetCheck(true);
+		find_transition_frame = true;
+	}
 }
