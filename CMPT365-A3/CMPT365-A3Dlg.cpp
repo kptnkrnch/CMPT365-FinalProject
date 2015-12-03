@@ -322,7 +322,7 @@ UINT STIByCopingCenterRowsThread(LPVOID pParam) {
 						Point p = FindTransition(edges);
 					
 						CString msg;
-						msg.Format(L"The transition begins at frame #: %d", (p.x + 1));
+						msg.Format(L"The transition begins at approximately frame #: %d", (p.x + 1));
 						AfxMessageBox(msg);
 					}
 
@@ -419,7 +419,7 @@ UINT STIByCopingCenterColumnsThread(LPVOID pParam) {
 						Point p = FindTransition(edges);
 					
 						CString msg;
-						msg.Format(L"The transition begins at frame #: %d", (p.x + 1));
+						msg.Format(L"The transition begins at approximately frame #: %d", (p.x + 1));
 						AfxMessageBox(msg);
 					}
 			
@@ -726,7 +726,7 @@ UINT STIByHistogramsThread(LPVOID pParam) {
 						Point p = FindTransition(stiImage);
 					
 						CString msg;
-						msg.Format(L"The transition begins at frame #: %d", (p.x + 1));
+						msg.Format(L"The transition begins at approximately frame #: %d", (p.x + 1));
 						AfxMessageBox(msg);
 					}
 				}
